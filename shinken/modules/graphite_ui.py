@@ -32,11 +32,12 @@ import re
 import socket
 import os
 
+from shinken.log import logger
 from string import Template
 from shinken.basemodule import BaseModule
 from datetime import datetime
+from shinken.log import logger
 
-# print "Loaded AD module"
 
 properties = {
     'daemons': ['webui'],
@@ -46,7 +47,7 @@ properties = {
 
 # called by the plugin manager
 def get_instance(plugin):
-    print "Get an GRAPITE UI module for plugin %s" % plugin.get_name()
+    logger.debug("[Graphite UI]Get an GRAPITE UI module for plugin %s" % plugin.get_name())
 
     instance = Graphite_Webui(plugin)
     return instance
@@ -70,6 +71,10 @@ class Graphite_Webui(BaseModule):
             my_name = socket.gethostname()
             self.uri = self.uri.replace('YOURSERVERNAME', my_name)
 
+        # optional "sub-folder" in graphite to hold the data of a specific host
+        self.graphite_data_source = self.illegal_char.sub('_',
+                                    getattr(modconf, 'graphite_data_source', ''))
+
     # Try to connect if we got true parameter
     def init(self):
         pass
@@ -92,7 +97,7 @@ class Graphite_Webui(BaseModule):
         metrics = [e for e in elts if e != '']
 
         for e in metrics:
-            #print "Graphite: groking: ", e
+            logger.debug("[Graphite UI] groking: %s" % e)
             elts = e.split('=', 1)
             if len(elts) != 2:
                 continue
@@ -116,7 +121,7 @@ class Graphite_Webui(BaseModule):
                     name_value[key] = m.groups(0)
                 else:
                     continue
-#            print "graphite: got in the end:", name, value
+            logger.debug("[Graphite UI] Got in the end: %s, %s" % (name, value))
             for key, value in name_value.items():
                 res.append((key, value))
         return res
@@ -152,22 +157,21 @@ class Graphite_Webui(BaseModule):
         e = datetime.fromtimestamp(graphend)
         e = e.strftime('%H:%M_%Y%m%d')
 
-        # Do we have a template?
-        # Do we have a template for the given source?
-        thesourcefile = os.path.join(self.templates_path ,  source , elt.check_command.get_name().split('!')[0] + '.graph')
+        filename = elt.check_command.get_name().split('!')[0] + '.graph'
 
-        if os.path.isfile(thesourcefile):
-                thefile = thesourcefile
-        else:
-                # If not try to use the one for the parent folder
-                thefile = os.path.join(self.templates_path ,  elt.check_command.get_name().split('!')[0] + '.graph')
+        # Do we have a template for the given source?
+        thefile = os.path.join(self.templates_path, source, filename)
+
+        # If not try to use the one for the parent folder
+        if not os.path.isfile(thefile):
+            thefile = os.path.join(self.templates_path, filename)
 
         if os.path.isfile(thefile):
             template_html = ''
             with open(thefile, 'r') as template_file:
                 template_html += template_file.read()
             # Read the template file, as template string python object
-            template_file.closed
+           
             html = Template(template_html)
             # Build the dict to instanciate the template string
             values = {}
@@ -184,7 +188,7 @@ class Graphite_Webui(BaseModule):
                     v = {}
                     v['link'] = self.uri
                     v['img_src'] = img.replace('"', "'") + "&from=" + d + "&until=" + e
-                    v['img_src'] = self._replaceFontSize(v['img_src'] , fontsize[source])
+                    v['img_src'] = self._replaceFontSize(v['img_src'], fontsize[source])
                     r.append(v)
             # No need to continue, we have the images already.
             return r
@@ -206,12 +210,15 @@ class Graphite_Webui(BaseModule):
                 uri = self.uri + 'render/?width=586&height=308&lineMode=connected&from=' + d + "&until=" + e
                 if re.search(r'_warn|_crit', metric):
                     continue
-                uri += "&target=%s.__HOST__.%s" % (host_name, metric)
-                uri += "&target=%s.__HOST__.%s" % (host_name, metric + "?????")
+                if self.graphite_data_source:
+                    target = "&target=%s.%s.__HOST__.%s" % (host_name, self.graphite_data_source, metric)
+                else:
+                    target = "&target=%s.__HOST__.%s" % (host_name, metric)
+                uri += target + target + "?????"
                 v = {}
                 v['link'] = self.uri
                 v['img_src'] = uri
-                v['img_src'] = self._replaceFontSize(v['img_src'] , fontsize[source])
+                v['img_src'] = self._replaceFontSize(v['img_src'], fontsize[source])
                 r.append(v)
 
             return r
@@ -233,12 +240,17 @@ class Graphite_Webui(BaseModule):
                     continue
                 elif value[1] == '%':
                     uri += "&yMin=0&yMax=100"
-                uri += "&target=%s.%s.%s" % (host_name, desc, metric)
-                uri += "&target=%s.%s.%s" % (host_name, desc, metric + "?????")
+                if self.graphite_data_source:
+                    target = "&target=%s.%s.%s.%s" % (host_name,
+                                                    self.graphite_data_source,
+                                                    desc, metric)
+                else:
+                    target = "&target=%s.%s.%s" % (host_name, desc, metric)
+                uri += target + target + "?????"
                 v = {}
                 v['link'] = self.uri
                 v['img_src'] = uri
-                v['img_src'] = self._replaceFontSize(v['img_src'] , fontsize[source])
+                v['img_src'] = self._replaceFontSize(v['img_src'], fontsize[source])
                 r.append(v)
             return r
 

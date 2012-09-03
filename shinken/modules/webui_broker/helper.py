@@ -542,7 +542,7 @@ class Helper(object):
 
         if current_page >= 2:
             # Name, start, end, is_current
-            res.append((u'\xc2\xab First', 0, step, False))
+            res.append((u'« First', 0, step, False))
             res.append(('...', None, None, False))
 
         print "Range,", current_page - 1, current_page + 1
@@ -563,7 +563,7 @@ class Helper(object):
             start = int((nb_pages - 1) * step)
             end = int(nb_pages * step)
             res.append(('...', None, None, False))
-            res.append((u'Last \xc2\xbb', start, end, False))
+            res.append((u'Last »', start, end, False))
 
         print "Total:", total, "pos", pos, "step", step
         print "nb pages", nb_pages, "current_page", current_page
@@ -610,7 +610,7 @@ class Helper(object):
     # We want the html id of an hostor a service. It's basically
     # the full_name with / changed as -- (because in html, / is not valid :) )
     def get_html_id(self, elt):
-        return elt.get_full_name().replace('/', '--').replace(' ', '_')
+        return elt.get_full_name().replace('/', '--').replace(' ', '_').replace('.', '_')
 
     # URI with spaces are BAD, must change them with %20
     def get_uri_name(self, elt):

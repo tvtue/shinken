@@ -68,6 +68,14 @@
 	// List of the bookmarks
 	var bookmarks = [];
 	var bookmarksro = [];
+
+        // Ok not the best way to restrict the admin functions to admin, but I can't find another way around.
+        %if user.is_admin:
+        var advfct=1;
+        %else:
+        var advcft=0;
+        %end
+
 	%for b in bookmarks:
 	declare_bookmark("{{!b['name']}}","{{!b['uri']}}");
 	%end
@@ -98,7 +106,6 @@
     new_filters = [];
     current_filters = [];
 </script>
-
 <div id="pageslide" style="display:none">
   <div class='row'>
     <span class='span8'><h2>Filtering options</h2></span>
@@ -232,28 +239,6 @@ $(function(){
       %end
     </div>
 
-    <div class='span1'>
-      <div class="btn-group pull-right">
-	<button class="btn"> <i class="icon-cog"></i> </button>
-	<button class="btn dropdown-toggle" data-toggle="dropdown">
-	  <span class="caret"></span>
-	</button>
-	<ul class="dropdown-menu">
-	  <li>
-	    <form class='form_in_dropdown'>
-	      <label> Number of elements to show </label>
-	      <select name='nb_elements'>
-		%t = [30, 50, 100, 200, 500, 1000, '5000', '10000', 'All']
-		%for v in t:
-		  <option value={{v}}>{{v}}</option>
-		%end
-	      </select>
-	    </form>
-	  </li>
-	</ul>
-      </div>
-
-    </div>
 </div>
 
 
@@ -398,7 +383,7 @@ $(function(){
       %end
 	  <div class="tableCriticity pull-left">
 
-	    <div class='tick pull-left' style="cursor:pointer;" onclick="add_remove_elements('{{helper.get_html_id(pb)}}')"><img id='selector-{{helper.get_html_id(pb)}}' class='img_tick' src='/static/images/tick.png' /></div>
+	    <div class='tick pull-left' style="cursor:pointer;" onmouseover="hovering_selection('{{helper.get_html_id(pb)}}')" onclick="add_remove_elements('{{helper.get_html_id(pb)}}')"><img id='selector-{{helper.get_html_id(pb)}}' class='img_tick' src='/static/images/tick.png' /></div>
 	      <div class='img_status pull-left'>
 		<div class="aroundpulse">
 		    %# " We put a 'pulse' around the elements if it's an important one "
@@ -424,9 +409,9 @@ $(function(){
 		%# "We put a title (so a tip) on the output onlly if need"
 		%if len(pb.output) > 100:
 		   %if app.allow_html_output:
-		      <div class='output pull-left' rel="tooltip" data-original-title="{{pb.output}}"> {{!helper.strip_html_output(pb.output[:100])}}</div>
+		      <div class='output pull-left' rel="tooltip" data-original-title="{{pb.output}}"> {{!helper.strip_html_output(pb.output[:app.max_output_length])}}</div>
 		   %else:
-		      <div class='output pull-left' rel="tooltip" data-original-title="{{pb.output}}"> {{pb.output[:100]}}</div>
+		      <div class='output pull-left' rel="tooltip" data-original-title="{{pb.output}}"> {{pb.output[:app.max_output_length]}}</div>
 		   %end
 		%else:
 		   %if app.allow_html_output:

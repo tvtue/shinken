@@ -78,6 +78,7 @@ class Webui_broker(BaseModule, Daemon):
         self.http_backend = getattr(modconf, 'http_backend', 'auto')
         self.login_text = getattr(modconf, 'login_text', None)
         self.allow_html_output = to_bool(getattr(modconf, 'allow_html_output', '0'))
+        self.max_output_length = int(getattr(modconf, 'max_output_length', '100'))
         self.manage_acl = to_bool(getattr(modconf, 'manage_acl', '1'))
         self.remote_user_enable = getattr(modconf, 'remote_user_enable', '0')
         self.remote_user_variable = getattr(modconf, 'remote_user_variable', 'X_REMOTE_USER')
@@ -542,14 +543,25 @@ class Webui_broker(BaseModule, Daemon):
                     return r
             except Exception, exp:
                 print exp.__dict__
-                logger.log("[%s] Warning: The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
-                logger.log("[%s] Exception type: %s" % (self.name, type(exp)))
-                logger.log("Back trace of this kill: %s" % (traceback.format_exc()))
+                logger.warning("[%s] The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
+                logger.debug("[%s] Exception type: %s" % (self.name, type(exp)))
+                logger.debug("Back trace of this kill: %s" % (traceback.format_exc()))
                 self.modules_manager.set_to_restart(mod)
         print 'get_common_preference :: Nothing return, I send none'
         return default
 
-# Try to got for an element the graphs uris from modules
+
+    # Maybe a page want to warn if there is no module that is able to give user preference?
+    def has_user_preference_module(self):
+        for mod in self.modules_manager.get_internal_instances():
+            f = getattr(mod, 'get_ui_user_preference', None)
+            if f and callable(f):
+                return True
+        return False
+        
+
+
+    # Try to got for an element the graphs uris from modules
     def get_user_preference(self, user, key, default=None):
         safe_print("Checking user preference for", user.get_name(), key)
 
@@ -562,9 +574,9 @@ class Webui_broker(BaseModule, Daemon):
                     return r
             except Exception, exp:
                 print exp.__dict__
-                logger.log("[%s] Warning: The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
-                logger.log("[%s] Exception type: %s" % (self.name, type(exp)))
-                logger.log("Back trace of this kill: %s" % (traceback.format_exc()))
+                logger.warning("[%s] The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
+                logger.debug("[%s] Exception type: %s" % (self.name, type(exp)))
+                logger.debug("Back trace of this kill: %s" % (traceback.format_exc()))
                 self.modules_manager.set_to_restart(mod)
         print 'get_user_preference :: Nothing return, I send non'
         return default
@@ -581,10 +593,28 @@ class Webui_broker(BaseModule, Daemon):
                     f(user, key, value)
             except Exception, exp:
                 print exp.__dict__
-                logger.log("[%s] Warning: The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
-                logger.log("[%s] Exception type: %s" % (self.name, type(exp)))
-                logger.log("Back trace of this kill: %s" % (traceback.format_exc()))
+                logger.warning("[%s] The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
+                logger.debug("[%s] Exception type: %s" % (self.name, type(exp)))
+                logger.debug("Back trace of this kill: %s" % (traceback.format_exc()))
                 self.modules_manager.set_to_restart(mod)
+                
+    def set_common_preference(self, key, value):
+        safe_print("Saving common preference", key, value)
+
+        for mod in self.modules_manager.get_internal_instances():
+            try:
+                f = getattr(mod, 'set_ui_common_preference', None)
+                if f and callable(f):
+                    print "Call user pref to module", mod.get_name()
+                    f(key, value)
+            except Exception, exp:
+                print exp.__dict__
+                logger.warning("[%s] The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
+                logger.debug("[%s] Exception type: %s" % (self.name, type(exp)))
+                logger.debug("Back trace of this kill: %s" % (traceback.format_exc()))
+                self.modules_manager.set_to_restart(mod)
+
+
 
         # end of all modules
 
@@ -604,9 +634,9 @@ class Webui_broker(BaseModule, Daemon):
                     lst.append(r)
             except Exception, exp:
                 print exp.__dict__
-                logger.log("[%s] Warning: The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
-                logger.log("[%s] Exception type: %s" % (self.name, type(exp)))
-                logger.log("Back trace of this kill: %s" % (traceback.format_exc()))
+                logger.warning("[%s] Warning: The mod %s raise an exception: %s, I'm tagging it to restart later" % (self.name, mod.get_name(), str(exp)))
+                logger.debug("[%s] Exception type: %s" % (self.name, type(exp)))
+                logger.debug("Back trace of this kill: %s" % (traceback.format_exc()))
                 self.modules_manager.set_to_restart(mod)
 
         safe_print("Will return external_ui_link::", lst)
